@@ -1,4 +1,4 @@
-import argparse
+# mypy: ignore-errors
 import curses
 import os
 import signal
@@ -68,7 +68,7 @@ def raise_error(sig, frame):
     raise RuntimeError
 
 
-def main(spot: Spot, disable_oa=False):
+def main(spot: Spot):
     """Uses IK to move the arm by setting hand poses"""
     spot.power_on()
     spot.blocking_stand()
@@ -124,13 +124,10 @@ def main(spot: Spot, disable_oa=False):
                 try:
                     spot.dock(DOCK_ID)
                     spot.home_robot()
-                except:
+                except Exception:
                     print("Dock was not found!")
-            elif pressed_key == "b":
+            elif pressed_key == "i":
                 point, rpy = move_to_initial(spot)
-            elif pressed_key == "v":
-                spot.spot_lease.dont_return_lease = True
-                break
             else:
                 # Tele-operate either the gripper pose or the base
                 if control_arm:
@@ -151,7 +148,6 @@ def main(spot: Spot, disable_oa=False):
                         y_vel=y_vel,
                         ang_vel=ang_vel,
                         vel_time=UPDATE_PERIOD * 2,
-                        disable_obstacle_avoidance=disable_oa,
                     )
                 else:
                     key_not_applicable = True
@@ -160,17 +156,13 @@ def main(spot: Spot, disable_oa=False):
                 last_execution = time.time()
 
     finally:
+        spot.power_off()
         curses.echo()
         stdscr.nodelay(False)
         curses.endwin()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--disable-oa", "-d", action="store_true")
-    args = parser.parse_args()
-    if args.disable_oa:
-        print("OBSTACLE AVOIDANCE HAS BEEN DISABLED!!!")
     spot = Spot("ArmKeyboardTeleop")
     with spot.get_lease(hijack=True) as lease:
-        main(spot, args.disable_oa)
+        main(spot)
